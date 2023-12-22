@@ -1,4 +1,5 @@
 const process = require("process");
+const fs = require("fs");
 
 /**
  *
@@ -159,6 +160,15 @@ function main() {
         const bencodedValue = process.argv[3];
 
         console.log(JSON.stringify(decodeBencode(bencodedValue)));
+    } else if (command === "info") {
+        const filePath = process.argv[3];
+
+        const file = fs.readFileSync(filePath, 'utf8');
+
+        const res = decodeBencode(file.toString());
+
+        console.log(`"Tracker URL: ${res.announce}"`);
+        console.log(`"Length: ${res.info.length}"`);
     } else {
         throw new Error(`Unknown command ${command}`);
     }
