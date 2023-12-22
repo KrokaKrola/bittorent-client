@@ -69,6 +69,10 @@ function decodeBencodeList(bencodedList) {
             const result = decodeBencodeList(bencodedList.slice(cursor, bencodedList.length - 1));
             list.push(result.value);
             cursor += result.length;
+        } else if (bencodedList[cursor] === 'd') {
+            const result = decodeBencodeDictionary(bencodedList.slice(cursor, bencodedList.length - 1));
+            list.push(result.value);
+            cursor += result.length;
         } else if (bencodedList[cursor] === 'e') {
             break;
         } else {
@@ -84,8 +88,55 @@ function decodeBencodeList(bencodedList) {
 
 /**
  *
+ * @param bencodedDictionary {string}
+ * @returns {{length: number, value: Record<string, unknown>}}
+ */
+function decodeBencodeDictionary(bencodedDictionary) {
+    // start from 1 to skip the 'd' character
+    let cursor = 1;
+    let dictionary = {};
+
+    // end at -1 to skip the 'e' character
+    while (cursor < bencodedDictionary.length - 1) {
+        if (bencodedDictionary[cursor] === 'e') {
+            break;
+        }
+
+        const result = decodeBencodeString(bencodedDictionary.slice(cursor));
+        const key = result.value;
+        cursor += result.length;
+
+        if (!isNaN(+bencodedDictionary[cursor])) {
+            const result = decodeBencodeString(bencodedDictionary.slice(cursor));
+            dictionary[key] = result.value;
+            cursor += result.length;
+        } else if (bencodedDictionary[cursor] === 'i') {
+            const result = decodeBencodeNumber(bencodedDictionary.slice(cursor));
+            dictionary[key] = result.value;
+            cursor += result.length;
+        } else if (bencodedDictionary[cursor] === 'l') {
+            const result = decodeBencodeList(bencodedDictionary.slice(cursor, bencodedDictionary.length - 1));
+            dictionary[key] = result.value;
+            cursor += result.length;
+        } else if (bencodedDictionary[cursor] === 'd') {
+            const result = decodeBencodeDictionary(bencodedDictionary.slice(cursor, bencodedDictionary.length - 1));
+            dictionary[key] = result.value;
+            cursor += result.length;
+        } else {
+            throw new Error("Only strings/numbers/lists/dictionaries are supported at the moment");
+        }
+    }
+
+    return {
+        value: dictionary,
+        length: cursor + 1
+    }
+}
+
+/**
+ *
  * @param bencodedValue {string}
- * @returns {number|string|*[]}
+ * @returns {number|string|*[]|Record<string, unknown>}
  */
 function decodeBencode(bencodedValue) {
     if (!isNaN(+bencodedValue[0])) {
@@ -94,8 +145,10 @@ function decodeBencode(bencodedValue) {
         return decodeBencodeNumber(bencodedValue).value;
     } else if (bencodedValue[0] === 'l') {
         return decodeBencodeList(bencodedValue).value;
+    } else if (bencodedValue[0] === 'd') {
+        return decodeBencodeDictionary(bencodedValue).value;
     } else {
-        throw new Error("Only strings/numbers/lists are supported at the moment");
+        throw new Error("Only strings/numbers/lists/dictionaries are supported at the moment");
     }
 }
 
